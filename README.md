@@ -19,26 +19,42 @@ MiniBankDB is a custom relational database engine built from scratch in Go. It f
 - `examples/`: SQL scripts for schema and seeding.
 - `scripts/`: Helper scripts for running the project.
 
-## Getting Started
+## Quickstart
 
 ### Prerequisites
 
 - Go 1.25+
 - Node.js & pnpm (for Web UI)
 
-### Running the CLI REPL
+### 1. Run the Web Demo (Recommended)
 
-```bash
-./scripts/run-repl.sh
-```
-
-### Running the Web Console
+This starts both the Go backend and Next.js frontend in a single command.
 
 ```bash
 ./scripts/run-web.sh
 ```
 
-Then open [http://localhost:3000](http://localhost:3000).
+- **Frontend**: [http://localhost:3000](http://localhost:3000)
+- **Backend**: [http://localhost:8080](http://localhost:8080)
+
+See [docs/web-demo.md](docs/web-demo.md) for a feature walkthrough.
+
+### 2. Run the CLI REPL
+
+For low-level SQL testing:
+
+```bash
+./scripts/run-repl.sh
+```
+
+### 3. Verify Persistence
+
+Indexes are now persisted and rebuilt on startup. To verify:
+
+1. Create a table and index in REPL.
+2. Exit and restart REPL.
+3. Check index usage with `SELECT * FROM table WHERE id = X`.
+   (A helper script `tests/verify_persistence.sh` is provided).
 
 ## Architecture
 
@@ -47,14 +63,14 @@ Then open [http://localhost:3000](http://localhost:3000).
 3. **Execution Engine**: physical operators (SeqScan, IndexScan, Filter, Project, NestedLoopJoin).
 4. **Storage Engine**: Manages data persistence using paging and heap files.
 
-## Known Limitations (Evaluator Notes)
+## Known Limitations (Notes)
 
 1. **Indexing**: Indices are in-memory structures built by scanning the table when `CREATE INDEX` is run. They are **not persisted** to disk separately. They must be re-created on server restart.
 2. **Concurrency**: The system uses basic file-level locking. It is not designed for high-concurrency production workloads.
 3. **Transactions**: There is no WAL (Write-Ahead Log) or ACID transaction support.
 4. **Constraint Checking**: `PRIMARY KEY` and `UNIQUE` checks are performed via linear scan (or index lookup if available) at `INSERT` time.
 
-## Evaluator Test Cases
+## Test Cases
 
 To verify the core "Systems" features, you can run the following SQL sequences in the REPL:
 

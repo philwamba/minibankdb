@@ -15,7 +15,8 @@
           "is_primary": false,
           "is_unique": false
         }
-      ]
+      ],
+      "indexes": null
     },
     "u": {
       "name": "u",
@@ -31,6 +32,38 @@
           "type": "STRING",
           "is_primary": false,
           "is_unique": true
+        }
+      ],
+      "indexes": null
+    },
+    "users": {
+      "name": "users",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "is_primary": true,
+          "is_unique": false
+        },
+        {
+          "name": "name",
+          "type": "STRING",
+          "is_primary": false,
+          "is_unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_id",
+          "column": "id",
+          "type": "HASH",
+          "is_unique": false
+        },
+        {
+          "name": "idx_id",
+          "column": "id",
+          "type": "HASH",
+          "is_unique": false
         }
       ]
     },
@@ -55,7 +88,8 @@
           "is_primary": false,
           "is_unique": false
         }
-      ]
+      ],
+      "indexes": null
     }
   }
 }

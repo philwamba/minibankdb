@@ -25,9 +25,17 @@ type Column struct {
 	TableName string     `json:"-"`
 }
 
+type IndexDef struct {
+	Name     string `json:"name"`
+	Column   string `json:"column"`
+	Type     string `json:"type"`
+	IsUnique bool   `json:"is_unique"`
+}
+
 type Table struct {
-	Name    string   `json:"name"`
-	Columns []Column `json:"columns"`
+	Name    string     `json:"name"`
+	Columns []Column   `json:"columns"`
+	Indexes []IndexDef `json:"indexes"`
 }
 
 type Catalog struct {

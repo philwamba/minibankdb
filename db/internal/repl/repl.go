@@ -146,6 +146,15 @@ func (r *REPL) handleCreateIndex(stmt *parser.CreateIndexStmt) error {
 	key := fmt.Sprintf("%s.%s", stmt.TableName, stmt.Column)
 	r.Planner.Indices[key] = idx
 
+	// Persist
+	table.Indexes = append(table.Indexes, catalog.IndexDef{
+		Name:     stmt.IndexName,
+		Column:   stmt.Column,
+		Type:     "HASH",
+		IsUnique: false,
+	})
+	r.Catalog.SaveToFile("catalog.json")
+
 	fmt.Printf("CREATE INDEX (%d entries)\n", count)
 	return nil
 }

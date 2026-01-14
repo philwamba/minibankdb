@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"minibank/internal/catalog"
 	"minibank/internal/errors"
+	"minibank/internal/indexing"
 	"minibank/internal/parser"
 
 	"minibank/internal/storage"
@@ -16,14 +17,16 @@ type Insert struct {
 	Values   [][]interface{}
 	schema   []catalog.Column
 	idx      int
+	Indices  map[string]*indexing.HashIndex
 }
 
-func NewInsert(hf *storage.HeapFile, values [][]interface{}, schema []catalog.Column) *Insert {
+func NewInsert(hf *storage.HeapFile, values [][]interface{}, schema []catalog.Column, indices map[string]*indexing.HashIndex) *Insert {
 	return &Insert{
 		HeapFile: hf,
 		Values:   values,
 		schema:   schema,
 		idx:      0,
+		Indices:  indices,
 	}
 }
 
@@ -34,7 +37,7 @@ func (op *Insert) Open() error {
 
 func (op *Insert) Next() (*storage.Tuple, error) {
 	if op.idx >= len(op.Values) {
-		return nil, nil 
+		return nil, nil
 	}
 
 	vals := op.Values[op.idx]
@@ -63,9 +66,19 @@ func (op *Insert) Next() (*storage.Tuple, error) {
 		return nil, err
 	}
 
-	_, _, err = op.HeapFile.Insert(data)
+	pid, slotID, err := op.HeapFile.Insert(data)
 	if err != nil {
 		return nil, err
+	}
+
+	rid := storage.RID{PageID: pid, SlotID: slotID}
+
+	for i, col := range op.schema {
+		key := fmt.Sprintf("%s.%s", col.TableName, col.Name)
+		if idx, ok := op.Indices[key]; ok {
+			idx.Insert(tuple.Cells[i].Value, rid)
+			fmt.Printf("[Insert] Updated index for %s\n", key)
+		}
 	}
 
 	return tuple, nil
@@ -126,15 +139,37 @@ func (op *Insert) checkConstraints(tuple *storage.Tuple) error {
 		colIdx int
 		isPK   bool
 		name   string
+		key    string
 	}
 	var checks []check
 	for i, col := range op.schema {
 		if col.IsPrimary || col.IsUnique {
-			checks = append(checks, check{colIdx: i, isPK: col.IsPrimary, name: col.Name})
+			key := fmt.Sprintf("%s.%s", col.TableName, col.Name)
+			checks = append(checks, check{colIdx: i, isPK: col.IsPrimary, name: col.Name, key: key})
 		}
 	}
 
 	if len(checks) == 0 {
+		return nil
+	}
+
+	needsScan := false
+	for _, c := range checks {
+		if idx, ok := op.Indices[c.key]; ok {
+			val := tuple.Cells[c.colIdx].Value
+			existingRids := idx.Get(val)
+			if len(existingRids) > 0 {
+				if c.isPK {
+					return fmt.Errorf("duplicate primary key constraint violation: column '%s' (via index)", c.name)
+				}
+				return fmt.Errorf("unique constraint violation: column '%s' (via index)", c.name)
+			}
+		} else {
+			needsScan = true
+		}
+	}
+
+	if !needsScan {
 		return nil
 	}
 

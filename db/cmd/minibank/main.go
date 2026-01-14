@@ -28,9 +28,16 @@ func main() {
 	switch *mode {
 	case "repl":
 		r := repl.NewREPL(cat, store)
+		if err := r.Planner.RebuildIndices(); err != nil {
+			fmt.Printf("Failed to rebuild indices: %v\n", err)
+		}
 		r.Run()
 	case "server":
 		pl := planner.NewPlanner(cat, store)
+		if err := pl.RebuildIndices(); err != nil {
+			fmt.Printf("Failed to rebuild indices: %v\n", err)
+			os.Exit(1)
+		}
 		srv := web_server.NewServer(pl, cat)
 		if err := srv.Start(*port); err != nil {
 			fmt.Printf("Server failed: %v\n", err)

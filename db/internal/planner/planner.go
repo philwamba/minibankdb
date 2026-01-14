@@ -20,6 +20,53 @@ func NewPlanner(cat *catalog.Catalog, store *storage.Engine) *Planner {
 	return &Planner{Catalog: cat, Storage: store, Indices: make(map[string]*indexing.HashIndex)}
 }
 
+func (p *Planner) RebuildIndices() error {
+	fmt.Println("Rebuilding indices...")
+	for _, table := range p.Catalog.Tables {
+		if len(table.Indexes) == 0 {
+			continue
+		}
+
+		hf, err := p.Storage.GetHeapFile(table.Name)
+		if err != nil {
+			return err
+		}
+
+		// Create/Init indices in memory
+		for _, idxDef := range table.Indexes {
+			key := fmt.Sprintf("%s.%s", table.Name, idxDef.Column)
+			p.Indices[key] = indexing.NewHashIndex()
+			fmt.Printf("Initialized index: %s\n", key)
+		}
+
+		// Scan table and populate
+		iter := hf.Iterator()
+		for {
+			data, rid, err := iter.Next()
+			if err != nil {
+				return err
+			}
+			if data == nil {
+				break
+			}
+
+			tuple, err := storage.DeserializeTuple(data, table.Columns)
+			if err != nil {
+				return err
+			}
+
+			for i, col := range table.Columns {
+				// efficient lookup? loop is fine for rebuild
+				key := fmt.Sprintf("%s.%s", table.Name, col.Name)
+				if idx, ok := p.Indices[key]; ok {
+					idx.Insert(tuple.Cells[i].Value, rid)
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func (p *Planner) CreatePlan(stmt parser.ASTNode) (execution.Iterator, error) {
 	switch n := stmt.(type) {
 	case *parser.SelectStmt:
@@ -53,7 +100,6 @@ func (p *Planner) planSelect(stmt *parser.SelectStmt) (execution.Iterator, error
 			if binExpr.Op == parser.OpEq {
 				if ident, ok := binExpr.Left.(*parser.IdentifierExpr); ok {
 					if lit, ok := binExpr.Right.(*parser.LiteralExpr); ok {
-						// Find column to get type
 						var colType catalog.ColumnType
 						for _, c := range table.Columns {
 							if c.Name == ident.Name {
@@ -144,7 +190,7 @@ func (p *Planner) planInsert(stmt *parser.InsertStmt) (execution.Iterator, error
 
 	rows := [][]interface{}{stmt.Values}
 
-	return execution.NewInsert(hf, rows, table.Columns), nil
+	return execution.NewInsert(hf, rows, table.Columns, p.Indices), nil
 }
 
 func (p *Planner) planUpdate(stmt *parser.UpdateStmt) (execution.Iterator, error) {

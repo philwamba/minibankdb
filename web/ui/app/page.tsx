@@ -3,9 +3,8 @@
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Play, Database, Server, Terminal, Settings } from 'lucide-react'
+import { Play, Terminal } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { cn } from '@/lib/utils'
 
 export default function Dashboard() {
     const [query, setQuery] = useState('SELECT * FROM accounts;')
@@ -20,7 +19,8 @@ export default function Dashboard() {
         setLoading(true)
         setError(null)
         try {
-            const res = await fetch('http://localhost:8080/api/query', {
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+            const res = await fetch(`${API_URL}/api/query`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ query }),
@@ -37,48 +37,19 @@ export default function Dashboard() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 flex">
-            {/* Sidebar */}
-            <aside className="w-64 bg-white border-r border-slate-200 hidden md:block">
-                <div className="p-6">
-                    <div className="flex items-center gap-2 mb-8">
-                        <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                            <Database className="h-4 w-4 text-white" />
-                        </div>
-                        <span className="font-bold text-xl text-slate-900">
-                            MiniBankDB
-                        </span>
-                    </div>
-
-                    <nav className="space-y-1">
-                        <NavItem
-                            icon={<Terminal size={20} />}
-                            label="Console"
-                            active
-                        />
-                        <NavItem icon={<Server size={20} />} label="Storage" />
-                        <NavItem
-                            icon={<Settings size={20} />}
-                            label="Settings"
-                        />
-                    </nav>
+        <>
+            <header className="mb-8 flex justify-between items-center">
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-900">
+                        SQL Console
+                    </h1>
+                    <p className="text-slate-500 mt-1">
+                        Execute queries against your MiniBankDB instance.
+                    </p>
                 </div>
-            </aside>
+            </header>
 
-            {/* Main Content */}
-            <main className="flex-1 p-8 overflow-auto">
-                <header className="mb-8 flex justify-between items-center">
-                    <div>
-                        <h1 className="text-3xl font-bold text-slate-900">
-                            SQL Console
-                        </h1>
-                        <p className="text-slate-500 mt-1">
-                            Execute queries against your MiniBankDB instance.
-                        </p>
-                    </div>
-                </header>
-
-                <div className="grid gap-6">
+            <div className="grid gap-6">
                     {/* Query Editor */}
                     <Card className="border-slate-200 shadow-sm overflow-hidden">
                         <CardHeader className="bg-slate-50 border-b border-slate-100 py-4">
@@ -216,31 +187,6 @@ export default function Dashboard() {
                         )}
                     </motion.div>
                 </div>
-            </main>
-        </div>
-    )
-}
-
-function NavItem({
-    icon,
-    label,
-    active = false,
-}: {
-    icon: React.ReactNode
-    label: string
-    active?: boolean
-}) {
-    return (
-        <button
-            className={cn(
-                'w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
-                active
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
-            )}
-        >
-            {icon}
-            {label}
-        </button>
+        </>
     )
 }
