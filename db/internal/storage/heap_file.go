@@ -117,7 +117,11 @@ func (it *HeapIterator) Next() ([]byte, RID, error) {
 		it.curSlot = 0
 	}
 
-	return nil, RID{}, nil 
+	return nil, RID{}, nil
+}
+
+func (it *HeapIterator) Close() error {
+	return nil
 }
 
 func (hf *HeapFile) DeleteTuple(rid RID) error {

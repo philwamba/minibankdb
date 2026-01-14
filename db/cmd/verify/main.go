@@ -19,7 +19,7 @@ func main() {
 
 	cat := catalog.NewCatalog()
 	store := storage.NewEngine(".")
-	r := repl.NewREPL(cat, store)
+	r := repl.NewREPL(cat, store, ".")
 
 	// Test Cases
 	tests := []struct {
@@ -63,9 +63,15 @@ func main() {
 			wantErr: false,
 		},
 		{
-			name: "5. Error Case: Int with Decimal",
+			name: "5. Decimal/Int Mixed",
 			queries: []string{
 				"INSERT INTO t VALUES (2, 20.50)",
+			},
+			wantErr: false,
+		},
+		{
+			name: "6. Error Case: Int with Decimal",
+			queries: []string{
 				"INSERT INTO t VALUES (1.5, 10)",
 			},
 			wantErr: true,

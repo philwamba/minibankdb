@@ -25,9 +25,17 @@ type Column struct {
 	TableName string     `json:"-"`
 }
 
+type IndexDef struct {
+	Name     string `json:"name"`
+	Column   string `json:"column"`
+	Type     string `json:"type"`
+	IsUnique bool   `json:"is_unique"`
+}
+
 type Table struct {
-	Name    string   `json:"name"`
-	Columns []Column `json:"columns"`
+	Name    string     `json:"name"`
+	Columns []Column   `json:"columns"`
+	Indexes []IndexDef `json:"indexes"`
 }
 
 type Catalog struct {
@@ -52,7 +60,25 @@ func (c *Catalog) CreateTable(name string, columns []Column) error {
 	c.Tables[name] = &Table{
 		Name:    name,
 		Columns: columns,
+		Indexes: []IndexDef{},
 	}
+	return nil
+}
+
+func (c *Catalog) AddIndex(tableName string, idx IndexDef) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	t, ok := c.Tables[tableName]
+	if !ok {
+		return fmt.Errorf("table %s not found", tableName)
+	}
+	for _, existing := range t.Indexes {
+		if existing.Name == idx.Name {
+			return nil // Already exists, idempotent
+		}
+	}
+	t.Indexes = append(t.Indexes, idx)
 	return nil
 }
 

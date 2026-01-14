@@ -48,12 +48,14 @@ func (p *Parser) Parse() (ASTNode, error) {
 // CREATE TABLE or CREATE INDEX
 func (p *Parser) parseCreate() (ASTNode, error) {
 	p.nextToken() // skip CREATE
-	if p.curToken.Value == "TABLE" {
+	switch p.curToken.Value {
+	case "TABLE":
 		return p.parseCreateTable()
-	} else if p.curToken.Value == "INDEX" {
+	case "INDEX":
 		return p.parseCreateIndex()
+	default:
+		return nil, fmt.Errorf("expected TABLE or INDEX after CREATE")
 	}
-	return nil, fmt.Errorf("expected TABLE or INDEX after CREATE")
 }
 
 func (p *Parser) parseCreateTable() (*CreateTableStmt, error) {
@@ -99,14 +101,15 @@ func (p *Parser) parseCreateTable() (*CreateTableStmt, error) {
 
 		// Constraints
 		for p.curToken.Value == "PRIMARY" || p.curToken.Value == "UNIQUE" {
-			if p.curToken.Value == "PRIMARY" {
+			switch p.curToken.Value {
+			case "PRIMARY":
 				p.nextToken()
 				if p.curToken.Value != "KEY" {
 					return nil, fmt.Errorf("expected KEY after PRIMARY")
 				}
 				p.nextToken()
 				col.IsPrimary = true
-			} else if p.curToken.Value == "UNIQUE" {
+			case "UNIQUE":
 				p.nextToken()
 				col.IsUnique = true
 			}
@@ -312,7 +315,8 @@ func (p *Parser) parseTerm() (Expression, error) {
 }
 
 func (p *Parser) parseSimpleExpr() (Expression, error) {
-	if p.curToken.Type == TokenIdentifier {
+	switch p.curToken.Type {
+	case TokenIdentifier:
 		name := p.curToken.Value
 		p.nextToken()
 		if p.curToken.Value == "." {
@@ -324,16 +328,17 @@ func (p *Parser) parseSimpleExpr() (Expression, error) {
 			p.nextToken()
 		}
 		return &IdentifierExpr{Name: name}, nil
-	} else if p.curToken.Type == TokenString {
+	case TokenString:
 		val := p.curToken.Value
 		p.nextToken()
 		return &LiteralExpr{Value: val}, nil
-	} else if p.curToken.Type == TokenNumber {
+	case TokenNumber:
 		val := p.curToken.Value
 		p.nextToken()
 		return &LiteralExpr{Value: RawNumber(val)}, nil
+	default:
+		return nil, fmt.Errorf("unexpected token in expression: %v", p.curToken)
 	}
-	return nil, fmt.Errorf("unexpected token in expression: %v", p.curToken)
 }
 
 func (p *Parser) parseLiteral() (interface{}, error) {
