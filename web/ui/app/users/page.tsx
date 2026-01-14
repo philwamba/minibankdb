@@ -27,6 +27,7 @@ export default function UsersPage() {
         setLoading(true)
         try {
             const res = await fetch(`${API_URL}/api/users`)
+            if (!res.ok) throw new Error(`HTTP ${res.status}`)
             const data = await res.json()
             if (data.error) throw new Error(data.error)
             
@@ -45,6 +46,7 @@ export default function UsersPage() {
 
     useEffect(() => {
         fetchUsers()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -121,7 +123,7 @@ export default function UsersPage() {
                                     className="p-2 border rounded"
                                     value={formData.id}
                                     onChange={e => setFormData({...formData, id: parseInt(e.target.value)})}
-                                    disabled={!!editingUser} // ID usually immutable
+                                    disabled={!!editingUser}
                                     required
                                 />
                             </div>

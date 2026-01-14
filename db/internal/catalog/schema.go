@@ -73,6 +73,11 @@ func (c *Catalog) AddIndex(tableName string, idx IndexDef) error {
 	if !ok {
 		return fmt.Errorf("table %s not found", tableName)
 	}
+	for _, existing := range t.Indexes {
+		if existing.Name == idx.Name {
+			return nil // Already exists, idempotent
+		}
+	}
 	t.Indexes = append(t.Indexes, idx)
 	return nil
 }

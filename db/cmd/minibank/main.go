@@ -19,8 +19,11 @@ func main() {
 	flag.Parse()
 
 	cat := catalog.NewCatalog()
-	if err := cat.LoadFromFile(filepath.Join(*dataDir, "catalog.json")); err != nil {
-		// New catalog
+	catalogPath := filepath.Join(*dataDir, "catalog.json")
+	if err := cat.LoadFromFile(catalogPath); err != nil {
+		if !os.IsNotExist(err) {
+			fmt.Fprintf(os.Stderr, "Warning: failed to load catalog: %v (starting fresh)\n", err)
+		}
 	}
 
 	store := storage.NewEngine(*dataDir)

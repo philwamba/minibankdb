@@ -98,7 +98,6 @@ func (r *REPL) handleCreateTable(stmt *parser.CreateTableStmt) error {
 		return err
 	}
 	fmt.Println("CREATE TABLE")
-	fmt.Println("CREATE TABLE")
 	if err := r.Catalog.SaveToFile(filepath.Join(r.DataDir, "catalog.json")); err != nil {
 		fmt.Printf("Warning: failed to persist catalog: %v\n", err)
 	}
@@ -153,7 +152,6 @@ func (r *REPL) handleCreateIndex(stmt *parser.CreateIndexStmt) error {
 	key := fmt.Sprintf("%s.%s", stmt.TableName, stmt.Column)
 	r.Planner.Indices[key] = idx
 
-	// Persist
 	// Persist
 	err = r.Catalog.AddIndex(stmt.TableName, catalog.IndexDef{
 		Name:     stmt.IndexName,

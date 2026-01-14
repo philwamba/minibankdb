@@ -29,13 +29,11 @@ func (s *Server) Start(port string) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/users", s.handleUsers)
 	mux.HandleFunc("/api/wallets", s.handleWallets)
-	mux.HandleFunc("/api/wallets", s.handleWallets)
 	mux.HandleFunc("/api/transactions", s.handleTransactions)
 	mux.HandleFunc("/api/reports/user-wallets", s.handleReport)
 
 	handler := s.enableCORS(mux)
 
-	// Auto-initialize schema for the demo
 	if err := s.ensureDemoSchema(); err != nil {
 		fmt.Printf("Warning: failed to ensure demo schema: %v\n", err)
 	}
@@ -141,29 +139,25 @@ func (s *Server) handleGenericCRUD(w http.ResponseWriter, r *http.Request, table
 			return
 		}
 
-		setStr := ""
-		first := true
+		var setClauses []string
+		var args []interface{}
 		for _, col := range columns {
 			if col == pkCol {
 				continue
 			}
 			if val, ok := body[col]; ok {
-				if !first {
-					setStr += ", "
-				}
-
-				switch v := val.(type) {
-				case string:
-					setStr += fmt.Sprintf("%s = '%s'", col, v)
-				default:
-					setStr += fmt.Sprintf("%s = %v", col, v)
-				}
-				first = false
+				setClauses = append(setClauses, fmt.Sprintf("%s = ?", col))
+				args = append(args, val)
 			}
 		}
 
-		sql := fmt.Sprintf("UPDATE %s SET %s WHERE %s = %v", table, setStr, pkCol, pkVal)
-		resp := s.executeQuery(sql)
+		pkInt, ok := pkVal.(float64)
+		if !ok {
+			http.Error(w, "Invalid primary key type", http.StatusBadRequest)
+			return
+		}
+		sql := fmt.Sprintf("UPDATE %s SET %s WHERE %s = %d", table, strings.Join(setClauses, ", "), pkCol, int64(pkInt))
+		resp := s.executePrepared(sql, args)
 		json.NewEncoder(w).Encode(resp)
 
 	case "DELETE":
@@ -222,25 +216,47 @@ type QueryResponse struct {
 }
 
 func (s *Server) executePrepared(sql string, args []interface{}) QueryResponse {
-	// Simple interpolation helper
-	// Replaces ? with values.
-	// NOTE: This is a basic implementation for the demo.
-	// Real SQL engines use the binder/parser for this.
 
-	finalSQL := sql
-	for _, arg := range args {
-		var valStr string
-		switch v := arg.(type) {
-		case string:
-			// Basic escaping
-			safe := strings.ReplaceAll(v, "'", "''")
-			valStr = fmt.Sprintf("'%s'", safe)
-		default:
-			valStr = fmt.Sprintf("%v", v)
+	var sb strings.Builder
+	argIdx := 0
+	inString := false
+
+	for i := 0; i < len(sql); i++ {
+		ch := sql[i]
+
+		if ch == '\'' {
+			inString = !inString
+			sb.WriteByte(ch)
+			continue
 		}
-		finalSQL = strings.Replace(finalSQL, "?", valStr, 1)
+
+		if ch == '?' && !inString {
+			if argIdx >= len(args) {
+				return QueryResponse{Error: "insufficient arguments for prepared statement"}
+			}
+
+			val := args[argIdx]
+			argIdx++
+
+			switch v := val.(type) {
+			case string:
+				safe := strings.ReplaceAll(v, "'", "''")
+				sb.WriteString(fmt.Sprintf("'%s'", safe))
+			case int, int64, float64:
+				sb.WriteString(fmt.Sprintf("%v", v))
+			default:
+				sb.WriteString(fmt.Sprintf("'%v'", v))
+			}
+		} else {
+			sb.WriteByte(ch)
+		}
 	}
-	return s.executeQuery(finalSQL)
+
+	if argIdx < len(args) {
+		// Warn or ignore
+	}
+
+	return s.executeQuery(sb.String())
 }
 
 func (s *Server) executeQuery(sql string) QueryResponse {
@@ -263,7 +279,6 @@ func (s *Server) executeQuery(sql string) QueryResponse {
 	}
 
 	if createIdx, ok := ast.(*parser.CreateIndexStmt); ok {
-		// handle Create Index similar to REPL
 		table, exists := s.Catalog.GetTable(createIdx.TableName)
 		if !exists {
 			return QueryResponse{Error: fmt.Sprintf("table %s not found", createIdx.TableName)}
@@ -281,18 +296,16 @@ func (s *Server) executeQuery(sql string) QueryResponse {
 		}
 
 		idx := indexing.NewHashIndex()
-		// Where do we get storage? Server struct doesn't have Storage directly, but Planner does.
-		// Planner has Storage *storage.Engine
 		hf, err := s.Planner.Storage.GetHeapFile(createIdx.TableName)
 		if err != nil {
 			return QueryResponse{Error: err.Error()}
 		}
 
 		iter := hf.Iterator()
+		defer iter.Close()
 		count := 0
 		for {
-			data, rid, err := iter.Next() // Update to use corrected signature returning rid struct?
-			// Wait, Iterator.Next returns (bytes, RID, error). Correct.
+			data, rid, err := iter.Next()
 			if err != nil {
 				return QueryResponse{Error: err.Error()}
 			}
@@ -312,11 +325,11 @@ func (s *Server) executeQuery(sql string) QueryResponse {
 		s.Planner.Indices[key] = idx
 
 		// Persist
-		// Persist
 		err = s.Catalog.AddIndex(createIdx.TableName, catalog.IndexDef{
-			Name:   createIdx.IndexName,
-			Column: createIdx.Column,
-			Type:   "HASH",
+			Name:     createIdx.IndexName,
+			Column:   createIdx.Column,
+			Type:     "HASH",
+			IsUnique: false,
 		})
 		if err != nil {
 			return QueryResponse{Error: err.Error()}

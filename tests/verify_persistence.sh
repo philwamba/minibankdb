@@ -38,8 +38,5 @@ else
     exit 1
 fi
 
-# Ideally check for "IndexScan" in debug output if enabled, 
-# but for now ensuring it runs without error and rebuilds is good.
-
 echo "Persistence Verification Passed!"
 rm -rf "$DATA_DIR"

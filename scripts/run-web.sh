@@ -4,7 +4,6 @@ set -euo pipefail
 # Define cleanup function to kill background processes
 cleanup() {
     echo "Stopping MiniBankDB Web Demo..."
-    # Read pids into array to avoid word splitting issues
     local pids
     if jobs -p >/dev/null 2>&1; then
         readarray -t pids < <(jobs -p)
@@ -23,7 +22,6 @@ FRONTEND_PORT="${FRONTEND_PORT:-3000}"
 echo "Starting MiniBankDB Backend on port $BACKEND_PORT..."
 cd "$PROJECT_ROOT/db/cmd/minibank"
 go run main.go -mode server -port :$BACKEND_PORT -data "$PROJECT_ROOT/data" &
-# We don't really need BACKEND_PID if we use jobs -p, but keeping it is harmless.
 
 echo "Waiting for backend to initialize..."
 for _ in {1..50}; do
