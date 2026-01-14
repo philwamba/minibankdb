@@ -1,0 +1,26 @@
+# Binaries
+bin/
+dist/
+*.exe
+*.test
+*.out
+
+# Data
+*.data
+*.meta
+*.log
+*.db
+
+# OS
+.DS_Store
+
+# Editos
+.vscode/
+.idea/
+
+# Node
+node_modules/
+.npm/
+
+# Go
+vendor/

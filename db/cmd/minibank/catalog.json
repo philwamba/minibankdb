@@ -1,0 +1,66 @@
+{
+  "tables": {
+    "accounts": {
+      "name": "accounts",
+      "columns": [
+        {
+          "name": "acc_id",
+          "type": "INT",
+          "is_primary": false,
+          "is_unique": false
+        },
+        {
+          "name": "user_id",
+          "type": "INT",
+          "is_primary": false,
+          "is_unique": false
+        },
+        {
+          "name": "bal",
+          "type": "DECIMAL",
+          "is_primary": false,
+          "is_unique": false
+        }
+      ]
+    },
+    "idx_test": {
+      "name": "idx_test",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "is_primary": false,
+          "is_unique": false
+        }
+      ]
+    },
+    "numbers": {
+      "name": "numbers",
+      "columns": [
+        {
+          "name": "val",
+          "type": "DECIMAL",
+          "is_primary": false,
+          "is_unique": false
+        }
+      ]
+    },
+    "users": {
+      "name": "users",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "is_primary": true,
+          "is_unique": false
+        },
+        {
+          "name": "name",
+          "type": "STRING",
+          "is_primary": false,
+          "is_unique": true
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "tables": {
+    "t": {
+      "name": "t",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "is_primary": true,
+          "is_unique": false
+        },
+        {
+          "name": "amt",
+          "type": "DECIMAL",
+          "is_primary": false,
+          "is_unique": false
+        }
+      ]
+    },
+    "u": {
+      "name": "u",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "is_primary": true,
+          "is_unique": false
+        },
+        {
+          "name": "email",
+          "type": "STRING",
+          "is_primary": false,
+          "is_unique": true
+        }
+      ]
+    },
+    "w": {
+      "name": "w",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "is_primary": true,
+          "is_unique": false
+        },
+        {
+          "name": "user_id",
+          "type": "INT",
+          "is_primary": false,
+          "is_unique": true
+        },
+        {
+          "name": "balance",
+          "type": "DECIMAL",
+          "is_primary": false,
+          "is_unique": false
+        }
+      ]
+    }
+  }
+}

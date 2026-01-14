@@ -1,0 +1,90 @@
+# MiniBankDB
+
+MiniBankDB is a custom relational database engine built from scratch in Go. It features a SQL-like query language, a B-Tree/Heap storage engine, and a web-based administration console.
+
+## Features
+
+- **SQL Support**: CREATE TABLE, INSERT, SELECT, UPDATE, DELETE, JOIN.
+- **Constraints**: PRIMARY KEY and UNIQUE constraint enforcement.
+- **Storage**: Page-based heap file storage with variable-length tuple support.
+- **Indexing**: Hash Index support for O(1) equality lookups (created via `CREATE INDEX`).
+- **Interfaces**: CLI REPL and Web Dashboard.
+
+## Project Structure
+
+- `db/`: Core database engine written in Go.
+  - `cmd/minibank`: Entry point.
+  - `internal/`: Internal modules (parser, planner, execution, storage).
+- `web/ui`: Next.js frontend for the web console.
+- `examples/`: SQL scripts for schema and seeding.
+- `scripts/`: Helper scripts for running the project.
+
+## Getting Started
+
+### Prerequisites
+
+- Go 1.25+
+- Node.js & pnpm (for Web UI)
+
+### Running the CLI REPL
+
+```bash
+./scripts/run-repl.sh
+```
+
+### Running the Web Console
+
+```bash
+./scripts/run-web.sh
+```
+
+Then open [http://localhost:3000](http://localhost:3000).
+
+## Architecture
+
+1. **SQL Parser**: Recursive descent parser converting SQL to AST.
+2. **Planner**: Converts AST to a tree of Execution Operators (Volcano Model).
+3. **Execution Engine**: physical operators (SeqScan, IndexScan, Filter, Project, NestedLoopJoin).
+4. **Storage Engine**: Manages data persistence using paging and heap files.
+
+## Known Limitations (Evaluator Notes)
+
+1. **Indexing**: Indices are in-memory structures built by scanning the table when `CREATE INDEX` is run. They are **not persisted** to disk separately. They must be re-created on server restart.
+2. **Concurrency**: The system uses basic file-level locking. It is not designed for high-concurrency production workloads.
+3. **Transactions**: There is no WAL (Write-Ahead Log) or ACID transaction support.
+4. **Constraint Checking**: `PRIMARY KEY` and `UNIQUE` checks are performed via linear scan (or index lookup if available) at `INSERT` time.
+
+## Evaluator Test Cases
+
+To verify the core "Systems" features, you can run the following SQL sequences in the REPL:
+
+### 1. Constraint Enforcement
+
+```sql
+CREATE TABLE users (id INT PRIMARY KEY, name STRING UNIQUE);
+INSERT INTO users (id, name) VALUES (1, 'Alice');
+-- Fails with "duplicate primary key constraint violation"
+INSERT INTO users (id, name) VALUES (1, 'Bob');
+-- Fails with "unique constraint violation"
+INSERT INTO users (id, name) VALUES (2, 'Alice');
+```
+
+### 2. Index Usage
+
+```sql
+CREATE INDEX idx_id ON users (id);
+-- The planner will output: "[Planner] Using IndexScan on users.id"
+SELECT * FROM users WHERE id = 1;
+```
+
+### 3. Join Support
+
+```sql
+CREATE TABLE accounts (acc_id INT, user_id INT, bal DECIMAL);
+INSERT INTO accounts (acc_id, user_id, bal) VALUES (101, 1, 500.00);
+SELECT * FROM users JOIN accounts ON users.id = accounts.user_id;
+```
+
+## License
+
+MIT
