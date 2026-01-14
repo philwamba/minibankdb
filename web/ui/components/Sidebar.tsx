@@ -54,7 +54,7 @@ export function Sidebar() {
                         href="/reports/user-wallets"
                         icon={<BarChart3 size={20} />}
                         label="Reports"
-                        active={pathname === '/reports/user-wallets'}
+                        active={pathname.startsWith('/reports')}
                     />
 
                     <div className="pt-4 pb-2">

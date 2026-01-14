@@ -58,12 +58,6 @@
           "column": "id",
           "type": "HASH",
           "is_unique": false
-        },
-        {
-          "name": "idx_id",
-          "column": "id",
-          "type": "HASH",
-          "is_unique": false
         }
       ]
     },

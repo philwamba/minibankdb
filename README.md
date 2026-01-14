@@ -37,7 +37,7 @@ This starts both the Go backend and Next.js frontend in a single command.
 - **Frontend**: [http://localhost:3000](http://localhost:3000)
 - **Backend**: [http://localhost:8080](http://localhost:8080)
 
-See [docs/web-demo.md](docs/web-demo.md) for a feature walkthrough.
+**Note**: The web demo connects to the backend API at `NEXT_PUBLIC_API_URL` (default: `http://localhost:8080`). Data is persisted in the directory specified by the backend's `-data` flag (default: `./data`), including the catalog (`catalog.json`) and table data files.
 
 ### 2. Run the CLI REPL
 
@@ -49,7 +49,7 @@ For low-level SQL testing:
 
 ### 3. Verify Persistence
 
-Indexes are now persisted and rebuilt on startup. To verify:
+Index definitions are persisted and in-memory indexes are automatically rebuilt on startup (no manual re-creation required). To verify:
 
 1. Create a table and index in REPL.
 2. Exit and restart REPL.
@@ -65,10 +65,10 @@ Indexes are now persisted and rebuilt on startup. To verify:
 
 ## Known Limitations (Notes)
 
-1. **Indexing**: Indices are in-memory structures built by scanning the table when `CREATE INDEX` is run. They are **not persisted** to disk separately. They must be re-created on server restart.
-2. **Concurrency**: The system uses basic file-level locking. It is not designed for high-concurrency production workloads.
+1. **Indexing**: Indices are in-memory structures. While definitions are persisted to `catalog.json`, the index data structures are **automatically rebuilt from the heap file on server startup**. Large tables may penalize startup time.
+2. **Concurrency**: The system uses basic table-level locking via Go mutexes. It is not designed for high-concurrency production workloads.
 3. **Transactions**: There is no WAL (Write-Ahead Log) or ACID transaction support.
-4. **Constraint Checking**: `PRIMARY KEY` and `UNIQUE` checks are performed via linear scan (or index lookup if available) at `INSERT` time.
+4. **Constraint Checking**: `PRIMARY KEY` and `UNIQUE` checks are optimized to use in-memory indices if available; otherwise, they fall back to a linear table scan at `INSERT` time.
 
 ## Test Cases
 

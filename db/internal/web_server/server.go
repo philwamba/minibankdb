@@ -9,20 +9,26 @@ import (
 	"minibank/internal/planner"
 	"minibank/internal/storage"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 )
 
 type Server struct {
 	Planner *planner.Planner
 	Catalog *catalog.Catalog
+	DataDir string
 }
 
-func NewServer(p *planner.Planner, c *catalog.Catalog) *Server {
-	return &Server{Planner: p, Catalog: c}
+func NewServer(p *planner.Planner, c *catalog.Catalog, dataDir string) *Server {
+	return &Server{Planner: p, Catalog: c, DataDir: dataDir}
 }
 
 func (s *Server) Start(port string) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/users", s.handleUsers)
+	mux.HandleFunc("/api/wallets", s.handleWallets)
 	mux.HandleFunc("/api/wallets", s.handleWallets)
 	mux.HandleFunc("/api/transactions", s.handleTransactions)
 	mux.HandleFunc("/api/reports/user-wallets", s.handleReport)
@@ -106,30 +112,20 @@ func (s *Server) handleGenericCRUD(w http.ResponseWriter, r *http.Request, table
 			return
 		}
 
-		colsStr := ""
-		valsStr := ""
-		first := true
+		var colsStr []string
+		placeholders := make([]string, 0, len(columns))
+		args := make([]interface{}, 0, len(columns))
+
 		for _, col := range columns {
 			if val, ok := body[col]; ok {
-				if !first {
-					colsStr += ", "
-					valsStr += ", "
-				}
-				colsStr += col
-
-				// Handle string quoting
-				switch v := val.(type) {
-				case string:
-					valsStr += fmt.Sprintf("'%s'", v)
-				default:
-					valsStr += fmt.Sprintf("%v", v)
-				}
-				first = false
+				colsStr = append(colsStr, col)
+				placeholders = append(placeholders, "?")
+				args = append(args, val)
 			}
 		}
 
-		sql := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", table, colsStr, valsStr)
-		resp := s.executeQuery(sql)
+		sql := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", table, strings.Join(colsStr, ", "), strings.Join(placeholders, ", "))
+		resp := s.executePrepared(sql, args)
 		json.NewEncoder(w).Encode(resp)
 
 	case "PUT":
@@ -171,13 +167,20 @@ func (s *Server) handleGenericCRUD(w http.ResponseWriter, r *http.Request, table
 		json.NewEncoder(w).Encode(resp)
 
 	case "DELETE":
-		pkVal := r.URL.Query().Get(pkCol)
-		if pkVal == "" {
+		pkValRaw := r.URL.Query().Get(pkCol)
+		if pkValRaw == "" {
 			http.Error(w, "Missing primary key for delete", http.StatusBadRequest)
 			return
 		}
 
-		sql := fmt.Sprintf("DELETE FROM %s WHERE %s = %s", table, pkCol, pkVal)
+		// Validate integer
+		pkVal, err := strconv.Atoi(pkValRaw)
+		if err != nil {
+			http.Error(w, "Invalid primary key format", http.StatusBadRequest)
+			return
+		}
+
+		sql := fmt.Sprintf("DELETE FROM %s WHERE %s = %d", table, pkCol, pkVal)
 		resp := s.executeQuery(sql)
 		json.NewEncoder(w).Encode(resp)
 
@@ -191,7 +194,11 @@ func (s *Server) handleGenericCRUD(w http.ResponseWriter, r *http.Request, table
 
 func (s *Server) enableCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+		origin := os.Getenv("CORS_ORIGIN")
+		if origin == "" {
+			origin = "http://localhost:3000"
+		}
+		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
@@ -214,21 +221,26 @@ type QueryResponse struct {
 	Error   string          `json:"error,omitempty"`
 }
 
-func (s *Server) handleQuery(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
+func (s *Server) executePrepared(sql string, args []interface{}) QueryResponse {
+	// Simple interpolation helper
+	// Replaces ? with values.
+	// NOTE: This is a basic implementation for the demo.
+	// Real SQL engines use the binder/parser for this.
 
-	var req QueryRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+	finalSQL := sql
+	for _, arg := range args {
+		var valStr string
+		switch v := arg.(type) {
+		case string:
+			// Basic escaping
+			safe := strings.ReplaceAll(v, "'", "''")
+			valStr = fmt.Sprintf("'%s'", safe)
+		default:
+			valStr = fmt.Sprintf("%v", v)
+		}
+		finalSQL = strings.Replace(finalSQL, "?", valStr, 1)
 	}
-
-	resp := s.executeQuery(req.Query)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	return s.executeQuery(finalSQL)
 }
 
 func (s *Server) executeQuery(sql string) QueryResponse {
@@ -244,7 +256,9 @@ func (s *Server) executeQuery(sql string) QueryResponse {
 		if err != nil {
 			return QueryResponse{Error: err.Error()}
 		}
-		s.Catalog.SaveToFile("catalog.json")
+		if err := s.Catalog.SaveToFile(filepath.Join(s.DataDir, "catalog.json")); err != nil {
+			return QueryResponse{Error: fmt.Sprintf("failed to save catalog: %v", err)}
+		}
 		return QueryResponse{Columns: []string{"Result"}, Rows: [][]interface{}{{"Table Created"}}}
 	}
 
@@ -298,12 +312,19 @@ func (s *Server) executeQuery(sql string) QueryResponse {
 		s.Planner.Indices[key] = idx
 
 		// Persist
-		table.Indexes = append(table.Indexes, catalog.IndexDef{
+		// Persist
+		err = s.Catalog.AddIndex(createIdx.TableName, catalog.IndexDef{
 			Name:   createIdx.IndexName,
 			Column: createIdx.Column,
 			Type:   "HASH",
 		})
-		s.Catalog.SaveToFile("catalog.json")
+		if err != nil {
+			return QueryResponse{Error: err.Error()}
+		}
+
+		if err := s.Catalog.SaveToFile(filepath.Join(s.DataDir, "catalog.json")); err != nil {
+			return QueryResponse{Error: fmt.Sprintf("failed to save catalog: %v", err)}
+		}
 
 		return QueryResponse{Columns: []string{"Result"}, Rows: [][]interface{}{{fmt.Sprintf("Index Created (%d entries)", count)}}}
 	}
@@ -342,14 +363,4 @@ func (s *Server) executeQuery(sql string) QueryResponse {
 	}
 
 	return QueryResponse{Columns: cols, Rows: rows}
-}
-
-func (s *Server) handleStatic(w http.ResponseWriter, r *http.Request) {
-
-	path := r.URL.Path
-	if path == "/" {
-		path = "/index.html"
-	}
-
-	http.ServeFile(w, r, "../../../web/ui"+path)
 }

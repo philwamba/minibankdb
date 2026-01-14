@@ -60,7 +60,20 @@ func (c *Catalog) CreateTable(name string, columns []Column) error {
 	c.Tables[name] = &Table{
 		Name:    name,
 		Columns: columns,
+		Indexes: []IndexDef{},
 	}
+	return nil
+}
+
+func (c *Catalog) AddIndex(tableName string, idx IndexDef) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	t, ok := c.Tables[tableName]
+	if !ok {
+		return fmt.Errorf("table %s not found", tableName)
+	}
+	t.Indexes = append(t.Indexes, idx)
 	return nil
 }
 

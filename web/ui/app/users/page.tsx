@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Plus, Pencil, Trash2, Users } from 'lucide-react'
+import { Plus, Pencil, Trash2 } from 'lucide-react'
 
 type User = {
     id: number
@@ -84,7 +84,7 @@ export default function UsersPage() {
 
     const openCreate = () => {
         setEditingUser(null)
-        setFormData({ id: Math.floor(Math.random() * 10000), name: '', email: '' })
+        setFormData({ id: Math.floor(Math.random() * 100000000), name: '', email: '' })
         setIsFormOpen(true)
     }
 

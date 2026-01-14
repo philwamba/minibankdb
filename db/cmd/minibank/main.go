@@ -9,6 +9,7 @@ import (
 	"minibank/internal/storage"
 	"minibank/internal/web_server"
 	"os"
+	"path/filepath"
 )
 
 func main() {
@@ -18,7 +19,7 @@ func main() {
 	flag.Parse()
 
 	cat := catalog.NewCatalog()
-	if err := cat.LoadFromFile("catalog.json"); err != nil {
+	if err := cat.LoadFromFile(filepath.Join(*dataDir, "catalog.json")); err != nil {
 		// New catalog
 	}
 
@@ -27,7 +28,7 @@ func main() {
 
 	switch *mode {
 	case "repl":
-		r := repl.NewREPL(cat, store)
+		r := repl.NewREPL(cat, store, *dataDir)
 		if err := r.Planner.RebuildIndices(); err != nil {
 			fmt.Printf("Failed to rebuild indices: %v\n", err)
 		}
@@ -35,16 +36,16 @@ func main() {
 	case "server":
 		pl := planner.NewPlanner(cat, store)
 		if err := pl.RebuildIndices(); err != nil {
-			fmt.Printf("Failed to rebuild indices: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Failed to rebuild indices: %v\n", err)
 			os.Exit(1)
 		}
-		srv := web_server.NewServer(pl, cat)
+		srv := web_server.NewServer(pl, cat, *dataDir)
 		if err := srv.Start(*port); err != nil {
-			fmt.Printf("Server failed: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Server failed: %v\n", err)
 			os.Exit(1)
 		}
 	default:
-		fmt.Printf("Unknown mode: %s\n", *mode)
+		fmt.Fprintf(os.Stderr, "Unknown mode: %s\n", *mode)
 		os.Exit(1)
 	}
 }

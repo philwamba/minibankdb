@@ -11,6 +11,7 @@ import (
 	"minibank/internal/planner"
 	"minibank/internal/storage"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -18,13 +19,15 @@ type REPL struct {
 	Catalog *catalog.Catalog
 	Storage *storage.Engine
 	Planner *planner.Planner
+	DataDir string
 }
 
-func NewREPL(cat *catalog.Catalog, store *storage.Engine) *REPL {
+func NewREPL(cat *catalog.Catalog, store *storage.Engine, dataDir string) *REPL {
 	return &REPL{
 		Catalog: cat,
 		Storage: store,
 		Planner: planner.NewPlanner(cat, store),
+		DataDir: dataDir,
 	}
 }
 
@@ -95,7 +98,11 @@ func (r *REPL) handleCreateTable(stmt *parser.CreateTableStmt) error {
 		return err
 	}
 	fmt.Println("CREATE TABLE")
-	return r.Catalog.SaveToFile("catalog.json")
+	fmt.Println("CREATE TABLE")
+	if err := r.Catalog.SaveToFile(filepath.Join(r.DataDir, "catalog.json")); err != nil {
+		fmt.Printf("Warning: failed to persist catalog: %v\n", err)
+	}
+	return nil
 }
 
 func (r *REPL) handleCreateIndex(stmt *parser.CreateIndexStmt) error {
@@ -147,13 +154,20 @@ func (r *REPL) handleCreateIndex(stmt *parser.CreateIndexStmt) error {
 	r.Planner.Indices[key] = idx
 
 	// Persist
-	table.Indexes = append(table.Indexes, catalog.IndexDef{
+	// Persist
+	err = r.Catalog.AddIndex(stmt.TableName, catalog.IndexDef{
 		Name:     stmt.IndexName,
 		Column:   stmt.Column,
 		Type:     "HASH",
 		IsUnique: false,
 	})
-	r.Catalog.SaveToFile("catalog.json")
+	if err != nil {
+		return err
+	}
+
+	if err := r.Catalog.SaveToFile(filepath.Join(r.DataDir, "catalog.json")); err != nil {
+		fmt.Printf("Warning: failed to persist catalog: %v\n", err)
+	}
 
 	fmt.Printf("CREATE INDEX (%d entries)\n", count)
 	return nil

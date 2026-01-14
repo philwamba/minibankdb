@@ -22,6 +22,7 @@ func NewPlanner(cat *catalog.Catalog, store *storage.Engine) *Planner {
 
 func (p *Planner) RebuildIndices() error {
 	fmt.Println("Rebuilding indices...")
+	p.Indices = make(map[string]*indexing.HashIndex)
 	for _, table := range p.Catalog.Tables {
 		if len(table.Indexes) == 0 {
 			continue
@@ -102,7 +103,7 @@ func (p *Planner) planSelect(stmt *parser.SelectStmt) (execution.Iterator, error
 					if lit, ok := binExpr.Right.(*parser.LiteralExpr); ok {
 						var colType catalog.ColumnType
 						for _, c := range table.Columns {
-							if c.Name == ident.Name {
+							if c.Name == ident.Name || (stmt.TableName+"."+c.Name) == ident.Name {
 								colType = c.Type
 								break
 							}
@@ -189,8 +190,8 @@ func (p *Planner) planInsert(stmt *parser.InsertStmt) (execution.Iterator, error
 	}
 
 	rows := [][]interface{}{stmt.Values}
-
-	return execution.NewInsert(hf, rows, table.Columns, p.Indices), nil
+	enrichedCols := enrichSchema(table.Columns, stmt.TableName)
+	return execution.NewInsert(hf, rows, enrichedCols, p.Indices), nil
 }
 
 func (p *Planner) planUpdate(stmt *parser.UpdateStmt) (execution.Iterator, error) {

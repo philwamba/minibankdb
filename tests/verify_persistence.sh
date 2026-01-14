@@ -1,5 +1,10 @@
 #!/bin/bash
-set -e
+set -euo pipefail
+
+cleanup() {
+  rm -rf "$DATA_DIR"
+}
+trap cleanup EXIT
 
 PROJECT_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 DATA_DIR="$PROJECT_ROOT/data-test"
@@ -22,7 +27,7 @@ echo "Step 2: Restart and Verify Index Usage..."
 OUTPUT=$(echo "
 SELECT * FROM users WHERE id = 1;
 exit
-" | go run cmd/minibank/main.go -data "$DATA_DIR")
+" | go run cmd/minibank/main.go -data "$DATA_DIR" 2>&1)
 
 if echo "$OUTPUT" | grep -q "Rebuilding indices"; then
     echo "PASS: Index rebuild triggered."

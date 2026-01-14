@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Plus, Pencil, Trash2, Wallet } from 'lucide-react'
+import { Plus, Pencil, Trash2 } from 'lucide-react'
 
 type Wallet = {
     id: number
@@ -42,6 +42,7 @@ export default function WalletsPage() {
 
     useEffect(() => {
         fetchWallets()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -81,7 +82,7 @@ export default function WalletsPage() {
 
     const openCreate = () => {
         setEditing(null)
-        setFormData({ id: Math.floor(Math.random() * 10000), user_id: 0, balance: '0.00' })
+        setFormData({ id: Math.floor(Math.random() * 100000000), user_id: 0, balance: '0.00' })
         setIsFormOpen(true)
     }
 

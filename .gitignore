@@ -24,3 +24,5 @@ node_modules/
 
 # Go
 vendor/
+web/ui/.env
+db/minibank

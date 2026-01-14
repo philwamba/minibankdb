@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Plus, ArrowRightLeft } from 'lucide-react'
+import { Plus } from 'lucide-react'
 
 type Transaction = {
     id: number
@@ -65,7 +65,7 @@ export default function TransactionsPage() {
     }
 
     const openCreate = () => {
-        setFormData({ id: Math.floor(Math.random() * 100000), wallet_id: 0, amount: '0.00', type: 'DEPOSIT' })
+        setFormData({ id: Math.floor(Math.random() * 100000000), wallet_id: 0, amount: '0.00', type: 'DEPOSIT' })
         setIsFormOpen(true)
     }
 
@@ -161,7 +161,7 @@ export default function TransactionsPage() {
                                     <tr key={t.id} className="border-b hover:bg-slate-50">
                                         <td className="px-4 py-3">{t.id}</td>
                                         <td className="px-4 py-3">{t.wallet_id}</td>
-                                        <td className="px-4 py-3 text-xs font-semibold px-2 py-1 rounded bg-slate-100 w-min">{t.type}</td>
+                                        <td className="px-4 py-3 text-xs font-semibold"><span className="px-2 py-1 rounded bg-slate-100 w-min">{t.type}</span></td>
                                         <td className="px-4 py-3 font-mono">{t.amount}</td>
                                     </tr>
                                 ))

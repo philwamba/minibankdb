@@ -6,8 +6,10 @@ import { RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export default function ReportPage() {
-    const [rows, setRows] = useState<any[]>([])
+    type ReportRow = [number, string, number]
+    const [rows, setRows] = useState<ReportRow[]>([])
     const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
 
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -15,13 +17,15 @@ export default function ReportPage() {
         setLoading(true)
         try {
             const res = await fetch(`${API_URL}/api/reports/user-wallets`)
+            if (!res.ok) throw new Error(`Request failed: ${res.status}`)
+            
             const data = await res.json()
             if (data.error) throw new Error(data.error)
             
-            // data.rows is [[id, name, balance], ...]
             setRows(data.rows || [])
         } catch (err: any) {
             console.error(err)
+            setError(err?.message || 'Failed to fetch report')
         } finally {
             setLoading(false)
         }
@@ -60,8 +64,8 @@ export default function ReportPage() {
                             ) : rows.length === 0 ? (
                                 <tr><td colSpan={3} className="p-4 text-center text-slate-400">No data found</td></tr>
                             ) : (
-                                rows.map((row, i) => (
-                                    <tr key={i} className="border-b hover:bg-slate-50">
+                                rows.map((row) => (
+                                    <tr key={row[0]} className="border-b hover:bg-slate-50">
                                         <td className="px-4 py-3">{row[0]}</td>
                                         <td className="px-4 py-3 font-medium">{row[1]}</td>
                                         <td className="px-4 py-3 font-mono text-green-600">{row[2]}</td>

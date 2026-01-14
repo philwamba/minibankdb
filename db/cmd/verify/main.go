@@ -19,7 +19,7 @@ func main() {
 
 	cat := catalog.NewCatalog()
 	store := storage.NewEngine(".")
-	r := repl.NewREPL(cat, store)
+	r := repl.NewREPL(cat, store, ".")
 
 	// Test Cases
 	tests := []struct {
